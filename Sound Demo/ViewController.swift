@@ -11,6 +11,7 @@ import AVFoundation
 
 class ViewController: UIViewController {
     
+    var isPlaying = false
     // we need an instance of AVAudioPlayer
     var player =  AVAudioPlayer()
     // provide the path for the audio file
@@ -19,18 +20,24 @@ class ViewController: UIViewController {
 
     @IBOutlet weak var volumeSlider: UISlider!
     @IBOutlet weak var scrubber: UISlider!
+    @IBOutlet weak var btnPlay: UIBarButtonItem!
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
-//        do {
-//            try player = AVAudioPlayer(contentsOf: URL(fileURLWithPath: path!))
-//            scrubber.maximumValue = Float(player.duration)
-//        } catch {
-//            print(error)
-//        }
+        
+        // adding gestures for the volume and scrubber slider
+        let gr = UITapGestureRecognizer(target: self, action: #selector(self.sliderTapped(_:)))
+        volumeSlider.addGestureRecognizer(gr)
+        
+        do {
+            try player = AVAudioPlayer(contentsOf: URL(fileURLWithPath: path!))
+            scrubber.maximumValue = Float(player.duration)
+        } catch {
+            print(error)
+        }
         
     }
-    
+    /*
     override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
         if event?.subtype == UIEvent.EventSubtype.motionShake {
             let soundArray = ["boing", "explosion", "hit", "knife", "shoot", "swish", "wah","warble"]
@@ -39,7 +46,6 @@ class ViewController: UIViewController {
             let fileLocation = Bundle.main.path(forResource: soundArray[randomNumber], ofType: "mp3")
             do {
                 try player = AVAudioPlayer(contentsOf: URL(fileURLWithPath: fileLocation!))
-//                scrubber.maximumValue = Float(player.duration)
                 player.play()
             } catch {
                 print(error)
@@ -47,35 +53,72 @@ class ViewController: UIViewController {
             
         }
     }
+    */
 
     @IBAction func playSound(_ sender: UIBarButtonItem) {
-        player.play()
-        timer = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(updateScrubber), userInfo: nil, repeats: true)
-//        timer = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(updateScrubber), userInfo: nil, repeats: true)
+        if isPlaying {
+            player.pause()
+            timer.invalidate()
+            btnPlay.image = UIImage(systemName: "play.fill")
+            isPlaying = false
+        } else {
+            player.play()
+            timer = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(updateScrubber), userInfo: nil, repeats: true)
+            btnPlay.image = UIImage(systemName: "pause.fill")
+            isPlaying = true
+        }
     }
+    /*
     @IBAction func pauseSound(_ sender: UIBarButtonItem) {
         player.pause()
         timer.invalidate()
     }
-    @IBAction func stopSound(_ sender: UIButton) {
+    */
+    
+    @IBAction func stopSound(_ sender: UIBarButtonItem) {
         player.stop()
         timer.invalidate()
         player.currentTime = 0
+        btnPlay.image = UIImage(systemName: "play.fill")
+        isPlaying = false
     }
+    
     
     @objc func updateScrubber() {
         scrubber.value = Float(player.currentTime)
+        if scrubber.value == scrubber.minimumValue {
+            isPlaying = false
+            btnPlay.image = UIImage(systemName: "play.fill")
+        }
     }
     
     @IBAction func volumeChanged(_ sender: UISlider) {
         player.volume = volumeSlider.value
     }
+    
     @IBAction func scrubberMoved(_ sender: UISlider) {
         player.currentTime = TimeInterval(scrubber.value)
-        player.play()
+        if isPlaying {
+            player.play()
+        }
+        
     }
     
-    
+    @objc func sliderTapped(_ g: UIGestureRecognizer) {
+
+        let s: UISlider? = (g.view as? UISlider)
+        if (s?.isHighlighted)! {
+            return
+        }
+
+        // tap on thumb, let slider deal with it
+        let pt: CGPoint = g.location(in: s)
+        let percentage = pt.x / (s?.bounds.size.width)!
+        let delta = Float(percentage) * Float((s?.maximumValue)! - (s?.minimumValue)!)
+        let value = (s?.minimumValue)! + delta
+        s?.setValue(Float(value), animated: true)
+        player.volume = s!.value
+    }
     
 }
 
